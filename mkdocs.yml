@@ -19,7 +19,7 @@ theme:
 
 plugins:
     - search
-    - mkdocstrings
+    # - mkdocstrings
     - git-revision-date
     - mkdocs-jupyter:
           include_source: True
