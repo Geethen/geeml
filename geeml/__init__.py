@@ -3,3 +3,5 @@
 __author__ = """Geethen Singh"""
 __email__ = 'geethen.singh@gmail.com'
 __version__ = '0.0.1'
+
+from .geeml import *
