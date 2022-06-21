@@ -1,3 +1,7 @@
+import ee
+import sys
+import os
+
 def getCountry(point, simple= True):
     """
     Returns country adminstartive boundary that point falls within
@@ -55,7 +59,7 @@ def createGrid(patchSize, units='distance', scale=None, aoi = None, vect = True)
         return grid, values
     return grid, values
 
-def prepareForExtraction (covariates, target, grid, aoi, scale, dd, spcvGridSize = None):
+def prepareForExtraction (covariates, grid, aoi, scale, dd, target = None, spcvGridSize = None):
 
     """
     Prepares explanatoy variables and response variables for data exatraction.
@@ -77,9 +81,11 @@ def prepareForExtraction (covariates, target, grid, aoi, scale, dd, spcvGridSize
         ee objects required for data extraction. This includes covariates (multiband ee.Image), target (single band ee.Image), grid (ee.Image),
         aoi (ee.Feature) and scale (int).
     """
-    assert ('linux' in sys.platform), "This code runs on Linux only."
     #Set directory
-    os.chdir(dd)
+    if os.path.exists(dd):
+        os.chdir(dd)
+    else:
+        os.makedirs(dd)
     
     if spcvGridSize is not None:
         #Generate Grid for spcv
