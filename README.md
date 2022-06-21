@@ -114,28 +114,19 @@ To install this package:
    ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
    
    #import datasets from GEE
-   nasadem = ee.Image()
+   nasadem = ee.Image("NASA/NASADEM_HGT/001")
    #A point in Kenya
    poi = ee.Geometry.Point([37.857884,-0.002197])
    kenya = geeml.getCountry(poi)
 
   # Prepare for data extraction
-  # Set parameters for extraction
-  covariates = nasadem
+
   # Grid to serve as workers during data extraction
   grid, items = createGrid(10000)
-  # Area of interest
-  aoi = kenya
-  # output scale
-  scale = 30
   # Download directory
   dd = '/content/drive/MyDrive/geeml_example'
 
-  covariates = nasadem
-  grid, items = geeml.createGrid()
-  scale= 30
-  aoi = kenya
-  covariates, _, grid, aoi, scale = geeml.prepare(covariates, grid = grid, aoi = aoi, scale= scale, dd= dd)
+  covariates, _, grid, aoi, scale = geeml.prepare(nasadem, grid = grid, aoi = kenya, scale= 5000, dd= dd)
   
   # Extract data
   if __name__ == '__main__':
