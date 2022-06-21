@@ -1,5 +1,4 @@
 import ee
-import sys
 import os
 
 def getCountry(point, simple= True):

@@ -22,6 +22,7 @@ def extractPoints(index, fid):
     Returns:
         Data (csv) exported to download directory (dd) specified in prepareForExraction function.
     """
+    assert ('linux' in sys.platform), "This code runs on Linux only."
     # Select patch
     if grid.name() == 'Image':
         patchSize = grid.projection().nominalScale()
@@ -67,7 +68,7 @@ def extractAoi(index, fid):
     Returns:
         Data (image patches as GeoTif) exported to download directory (dd) specified in prepareForExtraction function.
     """
-    
+    assert ('linux' in sys.platform), "This code runs on Linux only."
     # Select patch
     if grid.name() == 'Image':
         patchSize = grid.projection().nominalScale()
@@ -99,6 +100,7 @@ def extractSparsePatches(index, fid):
         Band 1 cooresponds to the spcvGrid and the last band corresponds to the target variable.
         
     """
+    assert ('linux' in sys.platform), "This code runs on Linux only."
     # Select patch
     if grid.name() == 'Image':
         #patchSize = grid.projection().nominalScale()
@@ -133,6 +135,7 @@ def extractPointsNeighbourhood(index, fid):
     Returns:
         Data (csv) exported to download directory (dd) specified in prepareForExraction function.
     """
+    assert ('linux' in sys.platform), "This code runs on Linux only."
     # Select patch
     if grid.name() == 'Image':
         patchSize = grid.projection().nominalScale()
