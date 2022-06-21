@@ -22,9 +22,9 @@
 <br />
 <div align="center">
   <a href="https://github.com/Geethen/geeml">
-    <img src="images/logo2_geeml.png" alt="Logo" width="400" height="400">
+    <img src="./images/logo2_geeml.png" alt="Logo" width="400" height="400">
   </a>
-  
+
 <h3 align="center">GEEML: Google Earth Engine Machine learning</h3>
 
   <p align="center">
