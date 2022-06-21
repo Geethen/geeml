@@ -160,7 +160,7 @@ def extractPointsNeighbourhood(index, fid):
         geemap.ee_export_image(finalCovariates.updateMask(target), filename= os.path.join(dd, f"covs_{fid}.tif"),\
             crs= 'EPSG:4326', scale= scale, region= vCell.geometry(), file_per_band=False)
 
-def pExtract(extractFunction, nProcesses = 25, workers = items):
+def pExtract(extractFunction, workers, nProcesses = 25):
     """
     Extract data from gee using parrallel processing
     
