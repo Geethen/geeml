@@ -21,7 +21,7 @@ def getCountry(point, simple= True):
     country = countries.filterBounds(point)
     return country
 
-def createGrid(patchSize, units='distance', scale=None, aoi = None, vect = True):
+def createGrid(patchSize, aoi, units='distance', scale=None, vect = True):
     """
     Generate a grid with a specified spacing.
     
@@ -47,8 +47,8 @@ def createGrid(patchSize, units='distance', scale=None, aoi = None, vect = True)
     grid = ee.Image.random(seed).multiply(1e6).int().reproject(proj).rename('id').clip(aoi)
     
     if vect:
-        grid = grid.reduceToVectors(**{ 'geometry': aoi})
-        values = grid.aggregate_array('id').getInfo()
+        grid = grid.reduceToVectors(**{ 'geometry': aoi.geometry().buffer(cellSize)})
+        values = grid.aggregate_array('label').getInfo()
         return grid, values
     else:
         reduction = grid.reduceRegion(ee.Reducer.frequencyHistogram(), aoi, maxPixels=1e13);
@@ -68,17 +68,36 @@ def prepareForExtraction (covariates, grid, aoi, scale, dd, target = None, spcvG
     Args:
         covariates (ee.List, ee.Image, ee.ImageCollection): List should contain images (ee.Image). If imagecollection,
             each image should be a single covariate.
-        target (ee.Image): The response variable. Optionally, this can be included in the covariates list.
+
         grid (ee.Image or ee.FeatureCollection): A grid created using the createGrid function since the unique patch
             id's need to match grid values.
-        spcvGridSize (int): The size of blocks to use for spcv. All samples within a block are assigned the same unique id.
+
         aoi (ee.Feature): The area of interest that designates the study area.
+
         scale (int): The spatial resolution for exported data.
+
         dd (string): The destination to save exported/downloaded data.
+
+        target (ee.Image): The response variable. Optionally, this can be included in the covariates list.
+
+        spcvGridSize (int): The size of blocks to use for spcv. All samples within a block are 
+            assigned the same unique id.
+        
     
     Returns:
-        ee objects required for data extraction. This includes covariates (multiband ee.Image), target (single band ee.Image), grid (ee.Image),
-        aoi (ee.Feature) and scale (int).
+        ee objects required for data extraction.
+
+        covariates (ee.Image or ee.ImageCollection): ee.Image if single band image or ee.ImageCollection
+            if multiband image or multiple covariates.
+        
+        target (ee.Image): The target
+
+        grid (ee.Image or ee.FeatureCollection): used as workers during data extraction
+
+        aoi (ee.Feature): The area of interest
+
+        scale (int): The scale (GSD) of the output (covariate and/or target) in metres.
+
     """
     #Set directory
     if os.path.exists(dd):
