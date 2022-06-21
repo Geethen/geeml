@@ -1,6 +1,6 @@
 geemap
 retry
-multiprocessing
+# multiprocessing
 ee
 shutil
 csv
