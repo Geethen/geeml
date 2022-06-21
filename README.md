@@ -105,7 +105,8 @@ To install this package:
 
    ```python
    #import packages
-   import geeml
+   from geeml.prepare import getCountry, createGrid, prepareForExtraction
+   from geeml.extract import extractAOI
    import ee
 
    # Authenticate GEE
@@ -117,26 +118,18 @@ To install this package:
    nasadem = ee.Image("NASA/NASADEM_HGT/001")
    #A point in Kenya
    poi = ee.Geometry.Point([37.857884,-0.002197])
-   kenya = geeml.getCountry(poi)
-
-  # Prepare for data extraction
+   kenya = getCountry(poi)
 
   # Grid to serve as workers during data extraction
   grid, items = createGrid(10000)
   # Download directory
   dd = '/content/drive/MyDrive/geeml_example'
-
-  covariates, _, grid, aoi, scale = geeml.prepare(nasadem, grid = grid, aoi = kenya, scale= 5000, dd= dd)
+  
+  # Prepare for data extraction
+  covariates, _, grid, aoi, scale = prepareForExtraction(nasadem, grid = grid, aoi = kenya, scale= 5000, dd= dd)
   
   # Extract data
-  if __name__ == '__main__':
-    logging.basicConfig()
-
-    pool = multiprocessing.Pool(25)
-    pool.starmap(geeml.extractAoi, enumerate(items))
-
-    pool.close()
-    pool.join()
+  pExtract(extractAoi)
    ```
 
 _For more examples, please refer to the [Documentation](https://geethen.github.io/geeml/notebooks/example/)_
