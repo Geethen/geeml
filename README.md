@@ -99,7 +99,6 @@ To install this package:
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
-
 <!-- USAGE EXAMPLES -->
 ## Basic usage
 
@@ -124,7 +123,7 @@ To install this package:
   grid, items = createGrid(10000)
   # Download directory
   dd = '/content/drive/MyDrive/geeml_example'
-  
+
   # Prepare for data extraction
   covariates, _, grid, aoi, scale = prepareForExtraction(nasadem, grid = grid, aoi = kenya, scale= 5000, dd= dd)
   
