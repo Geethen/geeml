@@ -8,6 +8,7 @@ import shutil
 from retry import retry
 import os
 import csv
+import sys
 
 #extract data at points
 @retry(tries=10, delay=1, backoff=2)
