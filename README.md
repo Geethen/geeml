@@ -91,9 +91,9 @@ To install this package:
    ```sh
    pip install geeml
    ```
-2. OR Clone the repo
+2. OR Build from source
    ```sh
-   git clone https://github.com/Geethen/geeml.git
+   pip install git+https://github.com/Geethen/geeml.git
    ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
