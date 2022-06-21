@@ -22,7 +22,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/Geethen/geeml">
-    <img src="./images/logo2_geeml.png" alt="Logo" width="400" height="400">
+    <img src="./images/logo2_GEEML.png" alt="Logo" width="400" height="400">
   </a>
 
 <h3 align="center">GEEML: Google Earth Engine Machine learning</h3>
@@ -107,21 +107,48 @@ To install this package:
    #import packages
    import geeml
    import ee
+
+   # Authenticate GEE
    ee.Authenticate()
-   ee.Initialize()
+   # Initialize GEE with high-volume end-point
+   ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
    
    #import datasets from GEE
    nasadem = ee.Image()
-   poi = ee.Geometry.Point([,])
-   SAfrica = getCountry(poi)
+   #A point in Kenya
+   poi = ee.Geometry.Point([37.857884,-0.002197])
+   kenya = geeml.getCountry(poi)
 
   # Prepare for data extraction
+  # Set parameters for extraction
+  covariates = nasadem
+  # Grid to serve as workers during data extraction
+  grid, items = createGrid(10000)
+  # Area of interest
+  aoi = kenya
+  # output scale
+  scale = 30
+  # Download directory
+  dd = '/content/drive/MyDrive/geeml_example'
 
+  covariates = nasadem
+  grid, items = geeml.createGrid()
+  scale= 30
+  aoi = kenya
+  covariates, _, grid, aoi, scale = geeml.prepare(covariates, grid = grid, aoi = aoi, scale= scale, dd= dd)
+  
   # Extract data
-   geeml.extractAoi(SAfrica)
+  if __name__ == '__main__':
+    logging.basicConfig()
+
+    pool = multiprocessing.Pool(25)
+    pool.starmap(geeml.extractAoi, enumerate(items))
+
+    pool.close()
+    pool.join()
    ```
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+_For more examples, please refer to the [Documentation](https://geethen.github.io/geeml/notebooks/example/)_
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
