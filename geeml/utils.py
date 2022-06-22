@@ -106,4 +106,3 @@ def createGrid(patchSize, aoi, units='distance', scale=None, vect = True):
                     .map(lambda x: ee.Number.parse(x)).getInfo() 
         return grid, values
     return grid, values
-
