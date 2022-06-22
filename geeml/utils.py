@@ -47,8 +47,6 @@ def eeprint(obj):
             });
         </script>
     """ % (id, json_str)))
-import ee
-import os
 
 def getCountry(point, simple= True):
     """
