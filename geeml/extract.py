@@ -11,7 +11,7 @@ import csv
 import sys
 
 import retry
-class extract(object):
+class extractor:
 
     def __init__(self, covariates, grid, aoi, scale, dd, workers, target = None, spcvGridSize = None):
         """
