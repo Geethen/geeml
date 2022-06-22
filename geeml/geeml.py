@@ -13,9 +13,10 @@ import csv
 import sys
 
 import retry
-class extract(object):
+class extract:
 
     def __init__(self, covariates, grid, aoi, scale, dd, workers, target = None, spcvGridSize = None):
+        
         """
         Prepares explanatoy variables and response variables for data exatraction.
         A grid for spatial cross validation (spcv) is also added as a band.
