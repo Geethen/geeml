@@ -104,9 +104,9 @@ To install this package:
 
    ```python
    #import packages
+   import ee
    from geeml.prepare import getCountry, createGrid, prepareForExtraction
    from geeml.extract import extractAOI
-   import ee
 
    # Authenticate GEE
    ee.Authenticate()
@@ -120,15 +120,15 @@ To install this package:
    kenya = getCountry(poi)
 
   # Grid to serve as workers during data extraction
-  grid, items = createGrid(10000)
+  grid, items = createGrid(50000)
   # Download directory
   dd = '/content/drive/MyDrive/geeml_example'
 
   # Prepare for data extraction
-  covariates, _, grid, aoi, scale = prepareForExtraction(nasadem, grid = grid, aoi = kenya, scale= 5000, dd= dd)
-  
+  trial = extract(covariates=nasadem, grid = grid, aoi = kenya, scale= 5000, dd= dd, workers=items)
+
   # Extract data
-  pExtract(extractAoi)
+  pExtract(trial.extractAoi, trial.workers)
    ```
 
 _For more examples, please refer to the [Documentation](https://geethen.github.io/geeml/notebooks/example/)_

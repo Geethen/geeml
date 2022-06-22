@@ -47,5 +47,63 @@ def eeprint(obj):
             });
         </script>
     """ % (id, json_str)))
+import ee
+import os
+
+def getCountry(point, simple= True):
+    """
+    Returns country adminstartive boundary that point falls within
     
+    Args:
+        point (ee.Geometry.Point): A point within the country of interest
+        simple (Bool): if True uses simplified geometry LSIB adminstrative boundaries.
+                        False uses detailed LSIB adminstartive boundaries.
+        
+    Returns:
+        Country adminstrative boundary (ee.Feature)
+    """
+    if simple:
+        countries = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017')
+    else:
+        countries = ee.FeatureCollection('USDOS/LSIB/2017')
+    
+    country = countries.filterBounds(point)
+    return country
+
+def createGrid(patchSize, aoi, units='distance', scale=None, vect = True):
+    """
+    Generate a grid with a specified spacing.
+    
+    Args:
+        patchSize (Int): The spatial resolution or spacing between grid cells (metres).
+        aoi (geometry obj): The extent to return the grid. if None, a global grid is generated.
+        vect (Bool): if True returns an ee.Featurecollection containing the grid.
+                    if False, returns a grid as an ee.Image.
+        units (string): Either distance (metres) or pixels. if pixels are specified, also specify scale.
+        scale (int): Factor to multiply pixels. Only specify if units equals 'pixels'.
+    
+    Returns: 
+        ee.FeatureCollection for vect=True or ee.Image for vect=False and list of
+        unique ids
+        
+    """
+    seed = 123
+    if units == 'pixels':
+      cellSize = patchSize*scale
+    else:
+      cellSize = patchSize
+    proj = ee.Projection("EPSG:5070").atScale(cellSize)
+    grid = ee.Image.random(seed).multiply(1e6).int().reproject(proj).rename('id').clip(aoi)
+    
+    if vect:
+        grid = grid.reduceToVectors(**{ 'geometry': aoi.geometry().buffer(cellSize)})
+        values = grid.aggregate_array('label').getInfo()
+        return grid, values
+    else:
+        reduction = grid.reduceRegion(ee.Reducer.frequencyHistogram(), aoi, maxPixels=1e13);
+        values = ee.Dictionary(reduction.get('id'))\
+                    .keys()\
+                    .map(lambda x: ee.Number.parse(x)).getInfo() 
+        return grid, values
+    return grid, values
 
