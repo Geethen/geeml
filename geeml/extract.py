@@ -249,28 +249,28 @@ class extractor:
             geemap.ee_export_image(finalCovariates.updateMask(target), filename= os.path.join(dd, f"covs_{fid}.tif"),\
                 crs= 'EPSG:4326', scale= scale, region= vCell.geometry(), file_per_band=False)
 
-    # @retry(tries=10, delay=1, backoff=2)
-    def pExtract(extractFunction, workers, nProcesses = 25):
-        """
-        Extract data from gee using parrallel processing
+@retry(tries=10, delay=1, backoff=2)
+def pExtract(extractFunction, workers, nProcesses = 25):
+    """
+    Extract data from gee using parrallel processing
+    
+    Args:
+        extractFunction : One of extractAoi, extractPoints, extractSparsePoints or extractPointNeighbourhood
         
-        Args:
-            extractFunction : One of extractAoi, extractPoints, extractSparsePoints or extractPointNeighbourhood
-            
-            nProcesses (int): The Number of parrallel processes
-            
-            workers (list): A list of unique ids corresponding to unique grid id's
-            
-        Returns:
-            Downloads files (csv or Geotiff) to Google Drive
-        """
+        nProcesses (int): The Number of parrallel processes
+        
+        workers (list): A list of unique ids corresponding to unique grid id's
+        
+    Returns:
+        Downloads files (csv or Geotiff) to Google Drive
+    """
+    
+    if __name__ == '__main__':
+        assert ('linux' in sys.platform), "This code runs on Linux only."
+        logging.basicConfig()
 
-        if __name__ == '__main__':
-            assert ('linux' in sys.platform), "This code runs on Linux only."
-            logging.basicConfig()
+        pool = multiprocessing.Pool(nProcesses)
+        pool.starmap(extractFunction, enumerate(workers))
 
-            pool = multiprocessing.Pool(nProcesses)
-            pool.starmap(extractFunction, enumerate(workers))
-
-            pool.close()
-            pool.join()
+        pool.close()
+        pool.join()
