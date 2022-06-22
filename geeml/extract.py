@@ -13,7 +13,7 @@ import sys
 import retry
 class extract(object):
 
-    def __init__(self, covariates, grid, aoi, scale, dd, target = None, spcvGridSize = None, workers = items):
+    def __init__(self, covariates, grid, aoi, scale, dd, workers, target = None, spcvGridSize = None):
         """
         Prepares explanatoy variables and response variables for data exatraction.
         A grid for spatial cross validation (spcv) is also added as a band.
@@ -208,8 +208,8 @@ class extract(object):
             print(f'Skipping patch {fid} with zero features')
         else:
             print(f'Extracting patch {fid} with {size} features')
-            # Download patch as tif ()
-            geemap.ee_export_image(finalCovariates, filename= os.path.join(dd, f"covs_{fid}.tif"),\
+        # Download patch as tif ()
+        geemap.ee_export_image(finalCovariates, filename= os.path.join(dd, f"covs_{fid}.tif"),\
                 crs= 'EPSG:4326', scale= scale, region= vTarget.geometry(), file_per_band=False)
 
     #extract data at points
