@@ -51,7 +51,6 @@ class extract(object):
             aoi (ee.Feature): The area of interest
 
             scale (int): The scale (GSD) of the output (covariate and/or target) in metres.
-
         """
         self.covariates = covariates
         self.grid = grid
@@ -201,16 +200,16 @@ class extract(object):
         elif grid.name() == 'FeatureCollection':
             vCell = ee.Feature(grid.filter(ee.Filter.eq('id', fid)).first())
         
-        target = finalCovariates.select('target').clip(vCell)
-        vTarget = target.int().addBands(target).reduceToVectors(ee.Reducer.last(), vCell, 25)#fix scale value
-        size = vTarget.size().getInfo()
+            target = finalCovariates.select('target').clip(vCell)
+            vTarget = target.int().addBands(target).reduceToVectors(ee.Reducer.last(), vCell, 25)#fix scale value
+            size = vTarget.size().getInfo()
         
         if size==0:
-        print(f'Skipping patch {fid} with zero features')
+            print(f'Skipping patch {fid} with zero features')
         else:
-        print(f'Extracting patch {fid} with {size} features')
-        # Download patch as tif ()
-        geemap.ee_export_image(finalCovariates, filename= os.path.join(dd, f"covs_{fid}.tif"),\
+            print(f'Extracting patch {fid} with {size} features')
+            # Download patch as tif ()
+            geemap.ee_export_image(finalCovariates, filename= os.path.join(dd, f"covs_{fid}.tif"),\
                 crs= 'EPSG:4326', scale= scale, region= vTarget.geometry(), file_per_band=False)
 
     #extract data at points
