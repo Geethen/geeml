@@ -12,6 +12,8 @@ import sys
 
 import retry
 
+from .utils import createGrid
+
 class extractor:
 
     def __init__(self, covariates, aoi, scale, dd, target = None, spcvGridSize = None):
