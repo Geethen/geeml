@@ -74,12 +74,14 @@ This python package makes it easier to extract satellite data from Google Earth 
 In its current state it supports the extraction of data for traditional machine learning (tabular data) in the form of csv's and the extraction of GeoTiff image patches for Deep Neural Networks.
 
 #### Motivation
-The Machine learning capabilities in the GEE JS code editor remain limited.For example, there is no support for XGBoost, LightGBM, NGBoost, etc. Simultaneously, the python ecosystem has much more support for training, valdation, hyperparameter tuning. However, for this functionality to be leveraged, data needs to be downloaded locally or stored in Google Drive or Google Cloud Storage to be useful. Therfore, this package aims to make it easier and faster to download pre-processed data in a format that is ready for machine learning. 
+The Machine learning capabilities in the GEE JS code editor remain limited. For example, there is no support for XGBoost, LightGBM, NGBoost, etc. Moreover, the python ecosystem has much more support for training, valdation and hyperparameter tuning. However, for this functionality to be leveraged, data needs to be downloaded locally or stored in Google Drive or Google Cloud Storage to benefit from the Machine learning python ecosystem. Therfore, this package aims to make it easier and faster to download GEE-processed data in a machine learning-ready format. 
 
 **Features**
-* Parallel processing
-* Support for both Tabular and Deep Neural Network type datasets
-* ML ready
+* Parallel export of images or sparse images (for example, GEDI).
+* Export values at points or polygons (ee.FeatureCollection).
+* Summarise data within polygons (ee.FeatureCollections).
+* Extract both tabular and Deep Neural Network (DNN) type datasets.
+* Provide end-to-end workflows for Machine learning.
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -101,34 +103,33 @@ To install this package:
 
 <!-- USAGE EXAMPLES -->
 ## Basic usage
+Download the NASADEM elevation data for Kenya.
 
    ```python
-   #import packages
-   import ee
-   from geeml.prepare import getCountry, createGrid, prepareForExtraction
-   from geeml.extract import extractAOI
+  #import packages
+  import ee
+  from geeml.utils import getCountry
+  from geeml.extract import extractor
 
-   # Authenticate GEE
-   ee.Authenticate()
-   # Initialize GEE with high-volume end-point
-   ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
+  # Authenticate GEE
+  ee.Authenticate()
+  # Initialize GEE with high-volume end-point
+  ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
    
-   #import datasets from GEE
-   nasadem = ee.Image("NASA/NASADEM_HGT/001")
-   #A point in Kenya
-   poi = ee.Geometry.Point([37.857884,-0.002197])
-   kenya = getCountry(poi)
+  # Import datasets from GEE
+  nasadem = ee.Image("NASA/NASADEM_HGT/001")
+  # A point in Kenya
+  poi = ee.Geometry.Point([37.857884,-0.002197])
+  kenya = getCountry(poi)
 
-  # Grid to serve as workers during data extraction
-  grid, items = createGrid(50000)
   # Download directory
   dd = '/content/drive/MyDrive/geeml_example'
 
   # Prepare for data extraction
-  trial = extract(covariates=nasadem, grid = grid, aoi = kenya, scale= 5000, dd= dd, workers=items)
+  trialExtractor = extractor(covariates=nasadem, aoi = kenya, scale= 5000, dd= dd)
 
   # Extract data
-  pExtract(trial.extractAoi, trial.workers)
+  trialExtractor.extractAoi()
    ```
 
 _For more examples, please refer to the [Documentation](https://geethen.github.io/geeml/notebooks/example/)_
@@ -141,8 +142,8 @@ _For more examples, please refer to the [Documentation](https://geethen.github.i
 ## Roadmap
 
 - [ ] Support the export of other formats (TFrecords/feather/geofeather/parquet and geoparquet)
-- [ ] Collect items that failed to export
-- [ ] Provide a progress bar
+- [ ] Download data from GEE based on local shapefiles
+- [ ] Provide parralel data extraction for points and polygons.
 
 
 See the [open issues](https://github.com/Geethen/geeml/issues) for a full list of proposed features (and known issues).
@@ -192,11 +193,13 @@ Project Link: [https://github.com/Geethen/geeml](https://github.com/Geethen/geem
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-* [Natural State]()
-* [University of the Witwatersrand]()
-* [Fitz patrick centre for african ornithology]()
+* [Natural State](https://www.naturalstate.org/)
+* [University of the Witwatersrand](https://www.wits.ac.za/)
+* [Fitz patrick centre for african ornithology](http://www.fitzpatrick.uct.ac.za/)
 
 This package was created with [Cookiecutter](https://github.com/cookiecutter/cookiecutter) and the [giswqs/pypackage](https://github.com/giswqs/pypackage) project template.
+
+This package uses the [geedim](https://pypi.org/project/geedim/) package for extracting image data at an AOI
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
