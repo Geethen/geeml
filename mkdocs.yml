@@ -51,4 +51,5 @@ nav:
     - API Reference:
           - geeml module: geeml.md
     - Notebooks:
-          - notebooks/example.ipynb
+          - notebooks/1_GEEML_data_extraction.ipynb
+          - notebooks/2_GEEML_GEDI_extraction.ipynb
