@@ -127,6 +127,7 @@ class extractor:
         
         # Sample all pixels at points
         if self.target.name() == 'Image':
+            projection = self.target.projection()
             # Extract data
             points = self.target.sample(**{'dropNulls': True, 'factor': None,\
                                 'numPixels': None,  'region': self.aoi,\
