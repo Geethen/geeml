@@ -2,6 +2,6 @@
 
 __author__ = """Geethen Singh"""
 __email__ = 'geethen.singh@gmail.com'
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 from .geeml import *
