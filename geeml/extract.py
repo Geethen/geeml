@@ -2,17 +2,28 @@ import ee
 import geemap
 
 import logging
-import multiprocessing
 import requests
 import shutil
-from retry import retry
 import os
-import csv
 import sys
 
-import retry
-
 from .utils import createGrid
+
+import urllib.request
+import os
+import pathlib
+import threading
+import time
+import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from itertools import product
+import csv
+from csv import writer
+
+from tqdm import TqdmWarning
+from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 class extractor:
 
@@ -110,57 +121,121 @@ class extractor:
                                 scale = self.scale, region= self.aoi.geometry())
 
         
-    def extractPoints(self, batchSize, prefix = 'task_'):
+    def geomPoints(self, grid, item):
         """
-        Extract covariate data at points when points is set to true in extractor.
+        Get points within a single grid geometry corresponding to item label
         
-       Args:
-           batchSize (int): The number of batches to split job into
-           prefix (str): Defaults to 'task_'. Used as file names.
-       Returns:
-           If points = True, data (csv) exported to download directory (dd).
+        Args:
+            grid (ee.FeatureCollection): The grid to parralelise over
+            item (int): corresponds to an id within the grid (from createGrid object).
+        
+        Returns:
+            points that are within the specified item
+        
         """
+        geom = ee.Feature(grid.filter(ee.Filter.eq('label', item)).first()).geometry()
+
+        # Sample all pixels at points
+        if self.target.name() == 'Image':
+            projection = self.target.projection()
+            # Extract data
+            points = self.target.clip(geom).sample(**{'dropNulls': True, 'factor': None,\
+                                'numPixels': None,  'region': geom,\
+                            'scale': self.scale,'projection': projection,'geometries':True})
+        else:
+            points = self.target.filterBounds(geom)
+        
+
+        return points
+
+        
+    def extractPoints(self, gridSize = 50000, batchSize = None, filename = 'output.csv'):
+        """
+        Extract covariate data at points.
+
+       Args:
+           gridSize (int): The tile size used to filter features. Runs in parralel.
+           batchSize (int): The number of batches to split job into. If large gridSize results in Out of Memory errors
+                specify a batchSize smaller than the number of samples. Runs in sequence.
+           filename (str): The output file name.
+           
+       Returns:
+           Data (csv) exported to download directory (dd).
+        """
+        
+        logger = logging.getLogger(__name__)
+
+        max_threads = self.num_threads or min(32, (os.cpu_count() or 1) + 4)
+        
         #Set working directory
         if not os.path.exists(self.dd):
                 os.makedirs(self.dd)
         os.chdir(self.dd)
         
-        # Sample all pixels at points
-        if self.target.name() == 'Image':
-            projection = self.target.projection()
-            # Extract data
-            points = self.target.sample(**{'dropNulls': True, 'factor': None,\
-                                'numPixels': None,  'region': self.aoi,\
-                            'scale': self.scale,'projection': projection,'geometries':True})
-        else:
-            points = self.target.filterBounds(self.aoi)
+        self.properties = self.covariates.bandNames().getInfo()
+        self._properties = self.covariates.bandNames()
         
-        size = points.size().getInfo()
-        pointsList = points.toList(size)
+        # add target band name to properties
+        if self.target.name == 'ee.Image':
+            self.properties = ee.List(self._properties).add(self.target.bandNames()).getInfo()
+
+        # Create grid
+        grid, items = createGrid(gridSize, ee.Feature(self.aoi))
         
-        batchSize = batchSize
+        self.batchSize = batchSize
         
-        for i, batch in enumerate(range(0, size, batchSize)):
-            fc = ee.FeatureCollection(pointsList.slice(i, i+batchSize))
-            task_no = str(i+1)
-            print(f'Extracting data for task {i+1} with {fc.size().getInfo()} point(s)')
-            tsk_name = prefix + task_no
+        desc = 'Points'#str(item)
+        bar_format = ('{desc}: |{bar}| [{percentage:5.1f}%] in {elapsed:>5s} (eta: {remaining:>5s})')
+        bar = tqdm(total = grid.size().getInfo(), desc=desc, bar_format=bar_format, dynamic_ncols=True, unit_scale=True, unit='B')
 
-            data = self.covariates.reduceRegions(fc, ee.Reducer.first(), self.scale)
-            properties = data.first().propertyNames()
+        warnings.filterwarnings('ignore', category=TqdmWarning)
+        redir_tqdm = logging_redirect_tqdm([logging.getLogger(__package__)])  # redirect logging through tqdm
 
-            output = data.map(lambda ft: ft.set('output', properties.map(lambda prop: ft.get(prop))))
-            result = output.aggregate_array('output').getInfo()
+        with redir_tqdm, bar:
+            def downloadPoints(item):
+                
+                points = self.geomPoints(grid, item)
+                
+                size = points.size().getInfo()
+                pointsList = points.toList(size)
+                    
+                for i, batch in enumerate(range(0, size, self.batchSize)):
+                    fc = ee.FeatureCollection(pointsList.slice(i, i+batchSize))
 
-            # Write the results to a file.
-            filename = f'{tsk_name}.csv'
-            with open(filename, 'w') as f:
-                writer = csv.writer(f)
-                # write the header
-                writer.writerow(properties.getInfo())
-                # write multiple rows
-                writer.writerows(result)
+                    data = self.covariates.reduceRegions(fc, ee.Reducer.first(), self.scale)
+                    
+                    output = data.map(lambda ft: ft.set('output', self._properties.map(lambda prop: ft.get(prop))))
+                    result = output.aggregate_array('output').getInfo()
+
+                    file_exists = os.path.isfile(filename)
+                    # Write the results to a file.
+                    csv_writer_lock = threading.Lock()
+                    with csv_writer_lock:
+                        with open(filename, 'a', newline='') as f:
+                            writer = csv.writer(f)
+                            if not file_exists:
+                                # write the header
+                                writer.writerow(self.properties)
+                            if file_exists:
+                                # write multiple rows
+                                writer.writerows(result)
+                                f.flush()
+                                f.close()
+                            
             
+            with ThreadPoolExecutor(max_workers = max_threads) as executor:
+                            # Run the tile downloads in a thread pool
+                            futures = [executor.submit(downloadPoints, tile) for tile in items]
+                            try:
+                                for future in as_completed(futures):
+                                    future.result()
+                                    bar.update(1)
+                                    
+                            except Exception as ex:
+                                logger.info('Cancelling...')
+                                executor.shutdown(wait=False, cancel_futures=True)
+                                raise ex        
+                    
     def extractRegions(self, reduce = True):
         """
         Extract summary statistics of covariates for regions.
