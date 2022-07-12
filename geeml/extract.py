@@ -27,7 +27,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 class extractor:
 
-    def __init__(self, covariates, aoi, scale, dd, target = None, spcvGridSize = None):
+    def __init__(self, covariates, aoi, scale, dd, target = None, spcvGridSize = None, num_threads = 5):
         """
         Prepares explanatoy variables and response variables for data exatraction.
         A grid for spatial cross validation (spcv) is also added as a band.
@@ -48,6 +48,8 @@ class extractor:
 
             spcvGridSize (int): The size of blocks to use for spcv. All samples within a block are 
                 assigned the same unique id.
+                
+            num_threads (int): The number of threads to use simulataneously to extract data.
         
         Returns:
             ee objects required for data extraction.
@@ -64,6 +66,7 @@ class extractor:
         self.dd = dd
         self.target = target
         self.spcvGridSize = spcvGridSize
+        self.num_threads = num_threads
         
         # grid for spcv
         if self.spcvGridSize is not None:
@@ -109,7 +112,7 @@ class extractor:
                 os.makedirs(self.dd + '/X/')
         os.chdir(self.dd + '/X/')
         geemap.download_ee_image(self.covariates, crs= 'EPSG:4326', filename= os.path.join(self.dd, f"X/X.tif"),\
-                                scale = self.scale, region= self.aoi.geometry())
+                                scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads)
 
         if self.target is not None:
             #Set directory
@@ -118,9 +121,9 @@ class extractor:
             os.chdir(self.dd + '/Y/')
             # Download patch as tif
             geemap.download_ee_image(self.target, crs= 'EPSG:4326', filename= os.path.join(self.dd, f"Y/Y.tif"),\
-                                scale = self.scale, region= self.aoi.geometry())
+                                scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads)
+            
 
-        
     def geomPoints(self, grid, item):
         """
         Get points within a single grid geometry corresponding to item label
@@ -197,32 +200,35 @@ class extractor:
                 points = self.geomPoints(grid, item)
                 
                 size = points.size().getInfo()
-                pointsList = points.toList(size)
-                    
-                for i, batch in enumerate(range(0, size, self.batchSize)):
-                    fc = ee.FeatureCollection(pointsList.slice(i, i+batchSize))
+                if size>0:
+                    pointsList = points.toList(size)
 
-                    data = self.covariates.reduceRegions(fc, ee.Reducer.first(), self.scale)
-                    
-                    output = data.map(lambda ft: ft.set('output', self._properties.map(lambda prop: ft.get(prop))))
-                    result = output.aggregate_array('output').getInfo()
+                    for batch in range(0, size+1, self.batchSize):
+                        fc = ee.FeatureCollection(pointsList.slice(batch, batch+batchSize))
 
-                    file_exists = os.path.isfile(filename)
-                    # Write the results to a file.
-                    csv_writer_lock = threading.Lock()
-                    with csv_writer_lock:
-                        with open(filename, 'a', newline='') as f:
-                            writer = csv.writer(f)
-                            if not file_exists:
-                                # write the header
-                                writer.writerow(self.properties)
-                            if file_exists:
-                                # write multiple rows
-                                writer.writerows(result)
-                                f.flush()
-                                f.close()
+                        data = self.covariates.reduceRegions(fc, ee.Reducer.first(), self.scale)
+
+                        output = data.map(lambda ft: ft.set('output', self._properties.map(lambda prop: ft.get(prop))))
+                        result = output.aggregate_array('output').getInfo()
+
+                        file_exists = os.path.isfile(filename)
+                        # Write the results to a file.
+                        csv_writer_lock = threading.Lock()
+                        with csv_writer_lock:
+                            with open(filename, 'a', newline='') as f:
+                                writer = csv.writer(f)
+                                if not file_exists:
+                                    # write the header
+                                    writer.writerow(self.properties)
+                                    # write multiple rows
+                                    writer.writerows(result)
+                                    f.flush()
+                                    f.close()
+                                else:
+                                    writer.writerows(result)
+                                    f.flush()
+                                    f.close()
                             
-            
             with ThreadPoolExecutor(max_workers = max_threads) as executor:
                             # Run the tile downloads in a thread pool
                             futures = [executor.submit(downloadPoints, tile) for tile in items]
@@ -235,13 +241,21 @@ class extractor:
                                 logger.info('Cancelling...')
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 raise ex        
-                    
-    def extractRegions(self, reduce = True):
+            
+    def extractRegions(self, reduce = True, reducers = None, gridSize = 50000, batchSize = None, filename = 'output.csv'):
         """
         Extract summary statistics of covariates for regions.
         
+        Args:
+           reduce (bool): default True. if False, each pixel within a polygon is downloaded.
+           reducers (ee.Reducer): The reducers to use to summarise data
+           gridSize (int): The tile size used to filter features. Runs in parralel.
+           batchSize (int): The number of batches to split job into. If large gridSize results in Out of Memory errors
+                specify a batchSize smaller than the number of samples. Runs in sequence.
+           filename (str): The output file name.
             
         Returns:
             Data (csv) exported to download directory (dd).
             
         """
+        
