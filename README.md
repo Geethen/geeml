@@ -141,9 +141,9 @@ _For more examples, please refer to the [Documentation](https://geethen.github.i
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] Support the export of other formats (TFrecords/feather/geofeather/parquet and geoparquet)
+- [ ] Support the export of additional formats (TFrecords)
 - [ ] Download data from GEE based on local shapefiles
-- [ ] Provide parralel data extraction for points and polygons.
+- [ ] Provide parralel data extraction for polygons.
 
 
 See the [open issues](https://github.com/Geethen/geeml/issues) for a full list of proposed features (and known issues).
