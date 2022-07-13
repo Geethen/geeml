@@ -1,6 +1,6 @@
 import ee
 import uuid
-from IPython.core.display import display, HTML
+from IPython.display import display, HTML
 
 import json
 import yaml
