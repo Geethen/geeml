@@ -112,7 +112,7 @@ class extractor:
                 os.makedirs(self.dd + '/X/')
         os.chdir(self.dd + '/X/')
         geemap.download_ee_image(self.covariates, crs= 'EPSG:4326', filename= os.path.join(self.dd, f"X/X.tif"),\
-                                scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads)
+                                scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads, dtype= 'float64')
 
         if self.target is not None:
             #Set directory
@@ -121,7 +121,7 @@ class extractor:
             os.chdir(self.dd + '/Y/')
             # Download patch as tif
             geemap.download_ee_image(self.target, crs= 'EPSG:4326', filename= os.path.join(self.dd, f"Y/Y.tif"),\
-                                scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads)
+                                scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads, dtype= 'float64')
             
 
     def geomPoints(self, grid, item):
