@@ -78,10 +78,9 @@ The Machine learning capabilities in the GEE JS code editor remain limited. For 
 
 **Features**
 * Parallel export of images or sparse images (for example, GEDI).
-* Export values at points or polygons (ee.FeatureCollection).
-* Summarise data within polygons (ee.FeatureCollections).
+* Export raster values at points or polygons (ee.FeatureCollection).
+* Summarise raster data within polygons (ee.FeatureCollections).
 * Extract both tabular and Deep Neural Network (DNN) type datasets.
-* Provide end-to-end workflows for Machine learning.
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -93,7 +92,7 @@ To install this package:
    ```sh
    pip install geeml
    ```
-2. OR Build from source
+2. Build from source (latest version)
    ```sh
    pip install git+https://github.com/Geethen/geeml.git
    ```
@@ -143,8 +142,7 @@ _For more examples, please refer to the [Documentation](https://geethen.github.i
 
 - [ ] Support the export of additional formats (TFrecords)
 - [ ] Download data from GEE based on local shapefiles
-- [ ] Provide parralel data extraction for polygons.
-
+- [ ] Add more examples for using the package
 
 See the [open issues](https://github.com/Geethen/geeml/issues) for a full list of proposed features (and known issues).
 
