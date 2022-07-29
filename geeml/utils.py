@@ -68,7 +68,7 @@ def getCountry(point, simple= True):
     country = countries.filterBounds(point)
     return country
 
-def createGrid(patchSize, aoi, units='distance', scale=None, vect = True):
+def createGrid(patchSize, aoi, units='distance', scale=None, vect = True, crs = 'EPSG:5070'):
     """
     Generate a grid with a specified spacing.
     
@@ -90,7 +90,7 @@ def createGrid(patchSize, aoi, units='distance', scale=None, vect = True):
       cellSize = patchSize*scale
     else:
       cellSize = patchSize
-    proj = ee.Projection("EPSG:5070").atScale(cellSize)
+    proj = ee.Projection(crs).atScale(cellSize)
     grid = ee.Image.random(seed).multiply(1e6).int().reproject(proj).rename('id').clip(aoi)
     
     if vect:
