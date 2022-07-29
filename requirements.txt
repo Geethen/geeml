@@ -1,1 +1,1 @@
-ee
+earthengine-api
