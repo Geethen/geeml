@@ -1,5 +1,5 @@
 import ee
-import geemap
+import geedim as gd
 
 import logging
 import requests
@@ -27,7 +27,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 class extractor:
 
-    def __init__(self, covariates, aoi, scale, dd, target = None, spcvGridSize = None, num_threads = 5):
+    def __init__(self, covariates, aoi, scale, dd, crs = 'EPSG:4326', target = None, spcvGridSize = None, num_threads = 5):
         """
         Prepares explanatoy variables and response variables for data exatraction.
         A grid for spatial cross validation (spcv) is also added as a band.
@@ -42,6 +42,8 @@ class extractor:
             scale (int): The spatial resolution for exported data.
 
             dd (string): The destination to save exported/downloaded data.
+
+            crs (str): The coordinate reference system for exported data.
 
             target (ee.FeatureCollection, ee.Image): The response variable. Optionally, this can be included in the covariates list.
                 If ee.FeatureCollection, covariates will be sampled at all target pixels.
@@ -64,6 +66,7 @@ class extractor:
         self.aoi = aoi
         self.scale =scale
         self.dd = dd
+        self.crs = crs
         self.target = target
         self.spcvGridSize = spcvGridSize
         self.num_threads = num_threads
@@ -111,7 +114,7 @@ class extractor:
         if not os.path.exists(self.dd + '/X/'):
                 os.makedirs(self.dd + '/X/')
         os.chdir(self.dd + '/X/')
-        geemap.download_ee_image(self.covariates, crs= 'EPSG:4326', filename= os.path.join(self.dd, f"X/X.tif"),\
+        gd.download.BaseImage(self.covariates).download(crs= self.crs, filename= os.path.join(self.dd, f"X/X.tif"),\
                                 scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads, dtype= 'float64')
 
         if self.target is not None:
@@ -120,7 +123,7 @@ class extractor:
                 os.makedirs(self.dd + '/Y/')
             os.chdir(self.dd + '/Y/')
             # Download patch as tif
-            geemap.download_ee_image(self.target, crs= 'EPSG:4326', filename= os.path.join(self.dd, f"Y/Y.tif"),\
+            gd.download.BaseImage(self.target).download(crs= self.crs, filename= os.path.join(self.dd, f"Y/Y.tif"),\
                                 scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads, dtype= 'float64')
             
 
