@@ -175,7 +175,7 @@ class extractor:
         # Sample all pixels at points
         if self.target.name() == 'Image':
             # Convert cells within item to vector grid cells
-            gridCells = self.target.reduceToVectors(**{'geometry': geom, 'scale': self.scale, 'geometryType': 'polygon',\
+            gridCells = self.target.addBands(self.target).reduceToVectors(**{'geometry': geom, 'scale': self.scale, 'geometryType': 'polygon',\
                                 'eightConnected': False, 'labelProperty': 'id', 'reducer': ee.Reducer.first()})
         
         return gridCells
