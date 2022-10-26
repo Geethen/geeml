@@ -127,9 +127,12 @@ class extractor:
                                 scale = self.scale, region= self.aoi.geometry(), num_threads= self.num_threads, dtype= 'float64')
             
 
-    def geomPoints(self, grid, item):
+    def geomFeatures(self, grid, item):
         """
-        Get points within a single grid geometry corresponding to item label
+        If target Sparse Image, Gets points within a single grid geometry that correspond to item label.
+        If target is FeatureCollection, gets features within a single grid geometry that correspond to item label.
+        Uses FilterBounds
+
         
         Args:
             grid (ee.FeatureCollection): The grid to parralelise over
@@ -151,8 +154,31 @@ class extractor:
         else:
             points = self.target.filterBounds(geom)
         
-
         return points
+
+    def geomGridCells(self, raster, grid, item):
+        """
+        Convert Raster grid cells with item grid cell to featurecollection
+        
+        
+        Args:
+            raster (ee.Image): The raster to convert to featurecollection
+            grid (ee.FeatureCollection): The grid to parralelise over
+            item (int): corresponds to an id within the grid (from createGrid object).
+        
+        Returns:
+            gridcells that are within the specified item
+        
+        """
+        geom = ee.Feature(grid.filter(ee.Filter.eq('label', item)).first()).geometry()
+
+        # Sample all pixels at points
+        if self.target.name() == 'Image':
+            # Convert cells within item to vector grid cells
+            gridCells = self.target.reduceToVectors(**{'geometry': geom, 'scale': self.scale, 'geometryType': 'polygon',\
+                                'eightConnected': False, 'labelProperty': 'id', 'reducer': ee.Reducer.first()})
+        
+        return gridCells
 
         
     def extractPoints(self, gridSize = 50000, batchSize = None, filename = 'output.csv'):
@@ -200,7 +226,7 @@ class extractor:
         with redir_tqdm, bar:
             def downloadPoints(item):
                 
-                points = self.geomPoints(grid, item)
+                points = self.geomFeatures(grid, item)
                 
                 size = points.size().getInfo()
                 if size>0:
@@ -245,13 +271,15 @@ class extractor:
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 raise ex        
             
-    def extractRegions(self, reduce = True, reducer = None, gridSize = 50000, batchSize = None, filename = 'output.csv'):
+    def extractRegions(self, reduce = True, reducer = None, sparse= True, gridSize = 50000, batchSize = None, filename = 'output.csv'):
         """
         Extract summary statistics of covariates for regions.
         
         Args:
            reduce (bool): default True. if False, each pixel within a polygon is downloaded.
            reducer (ee.Reducer): The reducer(s) to use to summarise data. If multiple reducers need to be applied, use combined reducers.
+           sparse (bool): default True. Only used when target is ee.Image. If True, samples covaraites at sparse valid target pixels (for eg., GEDI).
+           If False, raster grid is converted to polygons that are used by reducRegions.
            gridSize (int): The tile size used to filter features. Runs in parralel.
            batchSize (int): The number of batches to split job into. If large gridSize results in Out of Memory errors
                 specify a batchSize smaller than the number of samples. Runs in sequence.
@@ -283,7 +311,7 @@ class extractor:
         
         self.batchSize = batchSize
         
-        desc = 'Polygons'
+        desc = filename
         bar_format = ('{desc}: |{bar}| [{percentage:5.1f}%] in {elapsed:>5s} (eta: {remaining:>5s})')
         bar = tqdm(total = grid.size().getInfo(), desc=desc, bar_format=bar_format, dynamic_ncols=True, unit_scale=True, unit='B')
 
@@ -293,14 +321,17 @@ class extractor:
         with redir_tqdm, bar:
             def downloadPolygons(item):
                 
-                polygons = self.geomPoints(grid, item)
+                if sparse:
+                    features = self.geomFeatures(grid, item)
+                else:
+                    features = self.geomGridCells(self.target, grid, item)
                 
-                size = polygons.size().getInfo()
+                size = features.size().getInfo()
                 if size>0:
-                    polygonsList = polygons.toList(size)
+                    featuresList = features.toList(size)
 
                     for batch in range(0, size+1, self.batchSize):
-                        fc = ee.FeatureCollection(polygonsList.slice(batch, batch+batchSize))
+                        fc = ee.FeatureCollection(featuresList.slice(batch, batch+batchSize))
                         
                         if reduce:
                             data = self.covariates.reduceRegions(fc, reducer, self.scale)
