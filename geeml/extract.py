@@ -180,8 +180,9 @@ class extractor:
         cellsOfInterest = ee.ImageCollection(values.map(lambda x: self.target.eq(ee.Number(x)))).max().selfMask().rename('id')
 
         # Convert cells within item to vector grid cells
-        gridCells = self.target.updateMask(cellsOfInterest).reduceToVectors(**{'geometry': geom, 'scale': self.scale, 'geometryType': 'polygon',\
-                                'eightConnected': False, 'labelProperty': 'id', 'reducer': ee.Reducer.mode()})
+        gridCellsImg = self.target.updateMask(cellsOfInterest)
+        gridCells = gridCellsImg.addBands(gridCellsImg).reduceToVectors(**{'geometry': self.aoi, 'scale': self.scale, 'geometryType': 'polygon',\
+                                'eightConnected': False, 'labelProperty': 'id', 'reducer': ee.Reducer.first()})
         
         return gridCells
 
