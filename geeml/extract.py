@@ -276,7 +276,7 @@ class extractor:
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 raise ex        
             
-    def extractPolygons(self, reduce = True, reducer = None, gridSize = 50000, batchSize = None, filename = 'output.csv'):
+    def extractPolygons(self, reduce = True, reducer = None, gridSize = 50000, batchSize = 1000, filename = 'output.csv'):
         """
         Extract summary statistics of covariates for regions.
         
@@ -380,7 +380,7 @@ class extractor:
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 raise ex
 
-    def extractRasterGrid(self, reduce = True, reducer = None, gridSize = 50000, batchSize = None, filename = 'output.csv'):
+    def extractRasterGrid(self, reduce = True, reducer = None, gridSize = 50000, batchSize = 1000, filename = 'output.csv'):
         """
         Extract summary statistics of covariates for regions.
         
