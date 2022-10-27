@@ -171,8 +171,8 @@ class extractor:
         """
         geom = ee.Feature(grid.filter(ee.Filter.eq('label', item)).first()).geometry()
 
-        reduction = self.target.clip(geom).reduceRegion(ee.Reducer.frequencyHistogram(), self.aoi, maxPixels=1e13)
-        values = ee.Dictionary(reduction.get(self.target.rename('id')))\
+        reduction = self.target.clip(geom).rename('id').reduceRegion(ee.Reducer.frequencyHistogram(), self.aoi, maxPixels=1e13)
+        values = ee.Dictionary(reduction.get('id'))\
                     .keys()\
                     .map(lambda x: ee.Number.parse(x))
 
@@ -403,12 +403,12 @@ class extractor:
                 os.makedirs(self.dd)
         os.chdir(self.dd)
         
-        self._properties = self.covariates.bandNames()
-        self.properties = self._properties.getInfo()
+        # self._properties = self.covariates.bandNames()
+        # self.properties = self._properties.getInfo()
         
-        # add target band name to properties
-        if self.target.name == 'ee.Image':
-            self.properties = self._properties.add(self.target.bandNames()).getInfo()
+        # # add target band name to properties
+        # if self.target.name == 'ee.Image':
+        #     self.properties = self._properties.add(self.target.bandNames()).getInfo()
 
         # Create grid
         grid, items = createGrid(gridSize, ee.Feature(self.aoi))
