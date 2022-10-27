@@ -177,7 +177,7 @@ class extractor:
                     .map(lambda x: ee.Number.parse(x))
 
         
-        cellsOfInterest = ee.ImageCollection(values.map(lambda x: grid.eq(ee.Number(x)))).max().selfMask().rename('id')
+        cellsOfInterest = ee.ImageCollection(values.map(lambda x: self.target.eq(ee.Number(x)))).max().selfMask().rename('id')
 
         # Convert cells within item to vector grid cells
         gridCells = self.target.updateMask(cellsOfInterest).reduceToVectors(**{'geometry': geom, 'scale': self.scale, 'geometryType': 'polygon',\
@@ -326,10 +326,7 @@ class extractor:
         with redir_tqdm, bar:
             def downloadPolygons(item):
                 
-                if sparse:
-                    features = self.geomFeatures(grid, item)
-                else:
-                    features = self.geomGridCells(self.target, grid, item)
+                features = self.geomFeatures(grid, item)
                 
                 size = features.size().getInfo()
                 if size>0:
