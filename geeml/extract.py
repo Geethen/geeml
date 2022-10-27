@@ -156,13 +156,12 @@ class extractor:
         
         return points
 
-    def geomGridCells(self, raster, grid, item):
+    def geomGridCells(self, grid, item):
         """
-        Convert Raster grid cells with item grid cell to featurecollection
+        Convert target grid cells that intersect item grid cell to featurecollection
         
         
         Args:
-            raster (ee.Image): The raster to convert to featurecollection
             grid (ee.FeatureCollection): The grid to parralelise over
             item (int): corresponds to an id within the grid (from createGrid object).
         
@@ -172,11 +171,17 @@ class extractor:
         """
         geom = ee.Feature(grid.filter(ee.Filter.eq('label', item)).first()).geometry()
 
-        # Sample all pixels at points
-        if self.target.name() == 'Image':
-            # Convert cells within item to vector grid cells
-            gridCells = self.target.addBands(self.target).reduceToVectors(**{'geometry': geom, 'scale': self.scale, 'geometryType': 'polygon',\
-                                'eightConnected': False, 'labelProperty': 'id', 'reducer': ee.Reducer.first()})
+        reduction = self.target.clip(geom).reduceRegion(ee.Reducer.frequencyHistogram(), self.aoi, maxPixels=1e13)
+        values = ee.Dictionary(reduction.get(self.target.rename('id')))\
+                    .keys()\
+                    .map(lambda x: ee.Number.parse(x))
+
+        
+        cellsOfInterest = ee.ImageCollection(values.map(lambda x: grid.eq(ee.Number(x)))).max().selfMask().rename('id')
+
+        # Convert cells within item to vector grid cells
+        gridCells = self.target.updateMask(cellsOfInterest).reduceToVectors(**{'geometry': geom, 'scale': self.scale, 'geometryType': 'polygon',\
+                                'eightConnected': False, 'labelProperty': 'id', 'reducer': ee.Reducer.mode()})
         
         return gridCells
 
@@ -271,7 +276,7 @@ class extractor:
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 raise ex        
             
-    def extractRegions(self, reduce = True, reducer = None, sparse= True, gridSize = 50000, batchSize = None, filename = 'output.csv'):
+    def extractPolygons(self, reduce = True, reducer = None, gridSize = 50000, batchSize = None, filename = 'output.csv'):
         """
         Extract summary statistics of covariates for regions.
         
@@ -304,7 +309,7 @@ class extractor:
         
         # add target band name to properties
         if self.target.name == 'ee.Image':
-            self.properties = self.properties.add(self.target.bandNames()).getInfo()
+            self.properties = self._properties.add(self.target.bandNames()).getInfo()
 
         # Create grid
         grid, items = createGrid(gridSize, ee.Feature(self.aoi))
@@ -335,6 +340,105 @@ class extractor:
                         
                         if reduce:
                             data = self.covariates.reduceRegions(fc, reducer, self.scale)
+                        else:
+                            data =  self.covariates.sampleRegions(fc, scale = self.scale)
+                        
+                        self._properties = data.first().propertyNames()
+                        self.properties = self._properties.getInfo()
+
+                        output = data.map(lambda ft: ft.set('output', self._properties.map(lambda prop: ft.get(prop))))
+                        result = output.aggregate_array('output').getInfo()
+
+                        file_exists = os.path.isfile(filename)
+                        # Write the results to a file.
+                        csv_writer_lock = threading.Lock()
+                        with csv_writer_lock:
+                            with open(filename, 'a', newline='') as f:
+                                writer = csv.writer(f)
+                                if not file_exists:
+                                    # write the header
+                                    writer.writerow(self.properties)
+                                    # write multiple rows
+                                    writer.writerows(result)
+                                    f.flush()
+                                    f.close()
+                                else:
+                                    writer.writerows(result)
+                                    f.flush()
+                                    f.close()
+                            
+            with ThreadPoolExecutor(max_workers = max_threads) as executor:
+                            # Run the tile downloads in a thread pool
+                            futures = [executor.submit(downloadPolygons, tile) for tile in items]
+                            try:
+                                for future in as_completed(futures):
+                                    future.result()
+                                    bar.update(1)
+                                    
+                            except Exception as ex:
+                                logger.info('Cancelling...')
+                                executor.shutdown(wait=False, cancel_futures=True)
+                                raise ex
+
+    def extractRasterGrid(self, reduce = True, reducer = None, gridSize = 50000, batchSize = None, filename = 'output.csv'):
+        """
+        Extract summary statistics of covariates for regions.
+        
+        Args:
+           reduce (bool): default True. if False, each pixel within a polygon is downloaded.
+           reducer (ee.Reducer): The reducer(s) to use to summarise data. If multiple reducers need to be applied, use combined reducers.
+           gridSize (int): The tile size used to filter features. Runs in parralel.
+           batchSize (int): The number of batches to split job into. If large gridSize results in Out of Memory errors
+                specify a batchSize smaller than the number of samples. Runs in sequence.
+           filename (str): The output file name.
+            
+        Returns:
+            Data (csv) exported to download directory (dd).
+            
+        """
+        
+        logger = logging.getLogger(__name__)
+
+        max_threads = self.num_threads or min(32, (os.cpu_count() or 1) + 4)
+        
+        #Set working directory
+        if not os.path.exists(self.dd):
+                os.makedirs(self.dd)
+        os.chdir(self.dd)
+        
+        self._properties = self.covariates.bandNames()
+        self.properties = self._properties.getInfo()
+        
+        # add target band name to properties
+        if self.target.name == 'ee.Image':
+            self.properties = self._properties.add(self.target.bandNames()).getInfo()
+
+        # Create grid
+        grid, items = createGrid(gridSize, ee.Feature(self.aoi))
+        
+        self.batchSize = batchSize
+        
+        desc = filename
+        bar_format = ('{desc}: |{bar}| [{percentage:5.1f}%] in {elapsed:>5s} (eta: {remaining:>5s})')
+        bar = tqdm(total = grid.size().getInfo(), desc=desc, bar_format=bar_format, dynamic_ncols=True, unit_scale=True, unit='B')
+
+        warnings.filterwarnings('ignore', category=TqdmWarning)
+        redir_tqdm = logging_redirect_tqdm([logging.getLogger(__package__)])  # redirect logging through tqdm
+
+        with redir_tqdm, bar:
+            def downloadPolygons(item):
+                
+                features = self.geomGridCells(grid, item)
+                
+                size = features.size().getInfo()
+                if size>0:
+                    featuresList = features.toList(size)
+
+                    for batch in range(0, size+1, self.batchSize):
+                        fc = ee.FeatureCollection(featuresList.slice(batch, batch+batchSize))
+                        
+                        if reduce:
+                            data = self.covariates.reduceRegions(fc, reducer, self.scale, crs= self.crs)
                         else:
                             data =  self.covariates.sampleRegions(fc, scale = self.scale)
                         
