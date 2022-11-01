@@ -68,39 +68,47 @@ def getCountry(point, simple= True):
     country = countries.filterBounds(point)
     return country
 
-def createGrid(patchSize, aoi, units='distance', scale=None, vect = True, crs = 'EPSG:5070'):
+def createGrid(patchSize, aoi, vect = True, list = False, crs = 'EPSG:4326'):
     """
     Generate a grid with a specified spacing.
     
     Args:
         patchSize (Int): The spatial resolution or spacing between grid cells (metres).
-        aoi (geometry obj): The extent to return the grid. if None, a global grid is generated.
-        vect (Bool): if True returns an ee.Featurecollection containing the grid.
+        aoi (ee.Geometry): The extent to return the grid.
+        vect (Bool): Deafault True. if True returns a grid as an ee.Featurecollection.
                     if False, returns a grid as an ee.Image.
-        units (string): Either distance (metres) or pixels. if pixels are specified, also specify scale.
-        scale (int): Factor to multiply pixels. Only specify if units equals 'pixels'.
+        list (Bool): Default False. If True returns vector grid as a ee.list of ee.Geometry.Polygons.
+        crs (String): The coordinate reference system of the grid. Default is 'EPSG:4326'.
     
     Returns: 
-        ee.FeatureCollection for vect=True or ee.Image for vect=False and list of
-        unique ids
-        
+        ee.FeatureCollection for vect=True or ee.Image for vect=False and unique grid ids (ee.List)
+
+    Examples:
+        # Create a 10km vector grid
+        grid, ids = createGrid(10000, aoi)
+
+        # Create a 10km raster grid
+        grid, ids = createGrid(10000, aoi, vect = False)
+
+        # Create a 10km vector grid as a list of ee.Geometry.Polygons
+        grid, ids = createGrid(10000, aoi, list = True)
+
     """
     seed = 123
-    if units == 'pixels':
-      cellSize = patchSize*scale
-    else:
-      cellSize = patchSize
-    proj = ee.Projection(crs).atScale(cellSize)
-    grid = ee.Image.random(seed).multiply(1e6).int().reproject(proj).rename('id').clip(aoi)
     
     if vect:
-        grid = grid.reduceToVectors(**{ 'geometry': aoi.geometry().buffer(cellSize)})
-        values = grid.aggregate_array('label').getInfo()
+        grid = ee.FeatureCollection(aoi.geometry().coveringGrid(crs, patchSize))
+        gridLen = ee.Number(grid.size())
+        values = ee.List.sequence(0, gridLen.subtract(1))
+
+        if list == True:
+            grid = grid.toList(gridLen)
         return grid, values
     else:
-        reduction = grid.reduceRegion(ee.Reducer.frequencyHistogram(), aoi, maxPixels=1e13);
-        values = ee.Dictionary(reduction.get('id'))\
+        proj = ee.Projection(crs).atScale(patchSize)
+        grid = ee.Image.random(seed).multiply(1e6).int().reproject(proj).rename('gid').clip(aoi)
+        reduction = grid.reduceRegion(ee.Reducer.frequencyHistogram(), aoi, maxPixels=1e13, scale = patchSize)
+        values = ee.Dictionary(reduction.get('gid'))\
                     .keys()\
-                    .map(lambda x: ee.Number.parse(x)).getInfo() 
+                    
         return grid, values
-    return grid, values
