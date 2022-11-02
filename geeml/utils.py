@@ -109,6 +109,5 @@ def createGrid(patchSize, aoi, vect = True, list = False, crs = 'EPSG:4326'):
         grid = ee.Image.random(seed).multiply(1e6).int().reproject(proj).rename('gid').clip(aoi)
         reduction = grid.reduceRegion(ee.Reducer.frequencyHistogram(), aoi, maxPixels=1e13, scale = patchSize)
         values = ee.Dictionary(reduction.get('gid'))\
-                    .keys()\
-                    
+                    .keys()                    
         return grid, values
