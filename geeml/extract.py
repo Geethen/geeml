@@ -1,11 +1,9 @@
-import ee
-import geedim as gd
-
 import logging
 import os
 
-from .utils import createGrid, eeprint
-import eerepr
+import ee
+import geedim as gd
+from .utils import createGrid
 
 import threading
 import warnings
