@@ -5,6 +5,7 @@ import logging
 import os
 
 from .utils import createGrid, eeprint
+import eerepr
 
 import threading
 import warnings
@@ -105,7 +106,7 @@ class extractor:
             import ee
 
             ee.Authenticate()
-            ee.Initialize() # initialise earth engine
+            ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com') # initialise earth engine
 
             # Load data
             covariates = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR').filterDate('2018-01-01', '2018-12-31').mosaic()
@@ -155,7 +156,7 @@ class extractor:
             import ee
 
             ee.Authenticate()
-            ee.Initialize() # initialise earth engine
+            ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com') # initialise earth engine
 
             # Create grid
             grid, ids = createGrid(50000, aoi = aoi, vect = False, list = True)
@@ -248,7 +249,7 @@ class extractor:
             import ee
 
             ee.Authenticate()
-            ee.Initialize() # initialise earth engine
+            ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com') # initialise earth engine
 
             # Create extractor object
             covariates = ee.ImageCollection('COPERNICUS/S2_SR').filterDate('2019-01-01', '2019-12-31')
@@ -451,7 +452,7 @@ class extractor:
                                  use combined reducers (recommended for multi-reducers).
            gridSize (int): The tile size used to filter features. Runs in parralel.
            batchSize (int): The number of batches to split a job into. If large gridSize results in Out of Memory errors
-                specify a  smaller batchSize. Default: (gridSize/target grid size)**2
+                specify a  smaller batchSize.
            filename (str): The output file name.
             
         Returns:
@@ -463,7 +464,7 @@ class extractor:
             import ee
 
             ee.Authenticate()
-            ee.Initialize()
+            ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
 
             # Define an area of interest of South Africa
             aoi = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017').filter(ee.Filter.eq('country_na', 'South Africa'))
@@ -478,7 +479,7 @@ class extractor:
             # Extract each SRTM value in each 10x10 km grid cell at a 1000m resolution
             ex.extractByGrid(reduce = False, gridSize = 10000, filename = 'srtm.csv')
 
-            # Extract the mean SRTM value in per grid cell
+            # Extract the mean SRTM value per grid cell
             ex.extractByGrid(reduce = True, reducer = ee.Reducer.mean(), scale = 30, gridSize = 10000, batchSize = 2500)
 
             # Extract the mean and standard deviation SRTM value per grid cell at a 1km resolution for South Africa
