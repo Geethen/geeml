@@ -3,12 +3,13 @@ import os
 
 import ee
 import geedim as gd
-from .utils import createGrid
+from .utils import createGrid, eeprint
 
 import threading
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import csv
+import pandas as pd
 
 from tqdm import TqdmWarning
 from tqdm.auto import tqdm
@@ -302,7 +303,7 @@ class extractor:
                     pointsList = points.toList(size)
 
                     for batch in range(0, size+1, self.batchSize):
-                        fc = ee.FeatureCollection(pointsList.slice(batch, batch+batchSize))
+                        fc = ee.FeatureCollection(pointsList.slice(batch, batch+self.batchSize))
 
                         data = self.covariates.reduceRegions(fc, ee.Reducer.first(), self.scale)
 
@@ -440,6 +441,104 @@ class extractor:
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 raise ex
 
+    # def byBands(self, reduce = True, reducer = None, batchSize = None, filename = 'output.csv'):
+    #     """
+    #     Extract or reduce pixel values by points/polygons/grid band-wise. Bands can be added to a pre-existing csv file.
+    #     If download fails, the function will attempt to download the failed bands again with different settings (batchSize) 
+    #     to ensure download completes.
+        
+    #     Args:
+    #         reduce (bool): default True. if False, each pixel within a polygon is downloaded.
+    #         reducer (ee.Reducer): The reducer(s) to use to summarise data. If multiple reducers need to be applied, use combined reducers.
+    #         batchSize (int): The number of batches to split job into. If large gridSize results in Out of Memory errors
+    #             specify a batchSize smaller than the number of samples. Runs in sequence.
+    #         filename (str): The output file name.
+            
+    #     Returns:
+    #         Data (csv) exported to download directory (dd).
+            
+    #     """
+    #     logger = logging.getLogger(__name__)
+
+    #     max_threads = self.num_threads or min(32, (os.cpu_count() or 1) + 4)
+        
+    #     #Set working directory
+    #     if not os.path.exists(self.dd):
+    #             os.makedirs(self.dd)
+    #     os.chdir(self.dd)
+        
+    #     self._properties = self.covariates.bandNames()
+    #     self.properties = self._properties.getInfo()
+        
+    #     # add target band name to properties
+    #     if self.target.name == 'ee.Image':
+    #         self.properties = self._properties.add(self.target.bandNames()).getInfo()
+        
+    #     size = self.target.size().getInfo()
+        
+    #     if batchSize is None:
+    #         self.batchSize = size+1
+    #     else:
+    #         self.batchSize = batchSize
+
+    #     featuresList = self.target.toList(size)
+        
+    #     desc = filename
+    #     bar_format = ('{desc}: |{bar}| [{percentage:5.1f}%] in {elapsed:>5s} (eta: {remaining:>5s})')
+    #     bar = tqdm(total = len(self.properties), desc=desc, bar_format=bar_format, dynamic_ncols=True, unit_scale=True, unit='B')
+
+    #     warnings.filterwarnings('ignore', category=TqdmWarning)
+    #     redir_tqdm = logging_redirect_tqdm([logging.getLogger(__package__)])  # redirect logging through tqdm
+
+    #     with redir_tqdm, bar:
+    #         def downloadPolygons(band):
+    #             file_exists = os.path.isfile(filename)
+    #             if file_exists:
+    #                 # check how many variables have been downloaded
+    #                 df = pd.read_csv(filename)
+    #                 header = df.columns
+    #                 # remove bands from properties
+    #                 self.properties = [x for x in self.properties if x not in header]
+    #             else:
+    #                 df = pd.DataFrame()
+
+    #             for band in self.properties:
+    #                 result = pd.DataFrame()
+    #                 for batch in range(0, size+1, self.batchSize):
+    #                     fc = ee.FeatureCollection(featuresList.slice(batch, batch + self.batchSize))
+                                
+    #                     if reduce:
+    #                         data = self.covariates.select(band).reduceRegions(fc, reducer, self.scale).map(lambda ft: ft.set('id', ft.id()))
+    #                     else:
+    #                         data =  self.covariates.select(band).sampleRegions(fc, scale = self.scale)
+
+    #                     propNames = data.first().propertyNames().slice(0,2)
+    #                     output = data.map(lambda ft: ft.set('output', propNames.map(lambda prop: ft.get(prop))))
+    #                     result = output.aggregate_array('output').getInfo()
+    #                     result = pd.DataFrame(result, columns = ['id', band])
+
+    #                     if df.shape[0] == 0:
+    #                         df = result
+    #                     else:
+    #                         df = df.merge(result, on ='id', how ='outer')
+    #                     writer_lock = threading.Lock()
+    #                     with writer_lock:
+    #                         df.to_csv(filename)
+
+    #         with ThreadPoolExecutor(max_workers = max_threads) as executor:
+    #                         # Run the tile downloads in a thread pool
+    #                         futures = [executor.submit(downloadPolygons, band) for band in self.properties]
+    #                         try:
+    #                             for future in as_completed(futures):
+    #                                 future.result()
+    #                                 bar.update(1)
+                                    
+    #                         except Exception as ex:
+    #                             logger.info('Cancelling...')
+    #                             executor.shutdown(wait=False, cancel_futures=True)
+    #                             raise ex
+
+
     def extractByGrid(self, reduce = True, reducer = None, gridSize = 50000, batchSize = 250, filename = 'output.csv'):
         """
         Extract pixel values (if reducer = True) or summary statistics (reducer = True) of covariates by target grid.
@@ -524,7 +623,7 @@ class extractor:
                     featuresList = features.toList(size)
 
                     for batch in range(0, size+1, self.batchSize):
-                        fc = ee.FeatureCollection(featuresList.slice(batch, batch+batchSize))
+                        fc = ee.FeatureCollection(featuresList.slice(batch, batch+self.batchSize))
                         
                         if reduce:
                             data = self.covariates.reduceRegions(fc, reducer, self.scale, crs= self.crs)
