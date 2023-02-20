@@ -5,7 +5,7 @@ from IPython.display import display, HTML
 import json
 import yaml
 
-def eeprint(obj):
+def eeprint(obj: ee.computedobject.ComputedObject) -> None:
     """
     A function to pretty print earth engine outputs. Works on both jupyter locally and on colab.
     You do not need to use .getInfo()
@@ -38,7 +38,7 @@ def eeprint(obj):
     else:
         json_str = str(obj)
     display(HTML('<div id="{}" style="height: auto; width:100%;"></div>'.format(id)))
-    display(HTML("""
+    display(HTML(""" 
         <script src="/static/components/requirejs/require.js"></script> <!-- Needed in Colab -->
         <script>
             require(["https://rawgit.com/caldwell/renderjson/master/renderjson.js"], function() {
@@ -48,7 +48,7 @@ def eeprint(obj):
         </script>
     """ % (id, json_str)))
 
-def getCountry(point, simple= True):
+def getCountry(point: ee.Geometry.Point, simple: bool = True) -> ee.Feature:
     """
     Returns country adminstartive boundary that point falls within
     
@@ -60,15 +60,18 @@ def getCountry(point, simple= True):
     Returns:
         Country adminstrative boundary (ee.Feature)
     """
+    
+    # Load country boundaries
     if simple:
         countries = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017')
     else:
         countries = ee.FeatureCollection('USDOS/LSIB/2017')
     
+    # Filter boundaries to country containing point 
     country = countries.filterBounds(point)
     return country
 
-def createGrid(patchSize, aoi, vect = True, list = False, crs = 'EPSG:4326'):
+def createGrid(patchSize: int, aoi, vect = True, list = False, crs = 'EPSG:4326'):
     """
     Generate a grid with a specified spacing.
     
