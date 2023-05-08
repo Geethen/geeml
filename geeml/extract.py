@@ -60,8 +60,8 @@ class extractor:
             self.spcvGrid, self.ids = createGrid(self.spcvGridSize, aoi = self.aoi, vect = False)
 
             #Compile covariates
+            bandnames = self.covariates.bandNames().getInfo()
             if self.covariates.name() == 'ImageCollection':
-                bandnames = self.covariates.bandNames().getInfo()
                 finalCovariates = self.spcvGrid.addBands(ee.ImageCollection(self.covariates).toBands()).float().rename(['id'] + bandnames)
             elif self.covariates.name() == 'List':
                 finalCovariates = self.spcvGrid.addBands(ee.ImageCollection.fromImages(self.covariates).toBands().float())
