@@ -84,7 +84,7 @@ class extractor:
         self.covariates = finalCovariates
 
         #Format target
-        if self.target is not None and self.target.name() == 'ee.Image':
+        if self.target is not None and self.target.name() == 'Image':
             self.target = self.target.rename('target').float()
 
 
@@ -251,14 +251,14 @@ class extractor:
             ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com') # initialise earth engine
 
             # Create extractor object
-            covariates = ee.ImageCollection('COPERNICUS/S2_SR').filterDate('2019-01-01', '2019-12-31')
+            covariates = ee.ImageCollection('COPERNICUS/S2_SR').filterDate('2019-01-01', '2019-12-31').first()
 
             # Define 100 random points
             points = ee.FeatureCollection.randomPoints(aoi, 100, 123)
 
             aoi = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017')
             aoi = aoi.filter(ee.Filter.eq('country_na', 'South Africa'))
-            ex = extractor(covariates, aoi, 30, 'C:/Users/Desktop/kenya', target = points)
+            ex = extractor(covariates, aoi.geometry(), 30, 'C:/Users/Desktop/kenya', target = points)
 
             # Extract data
             ex.extractPoints()
@@ -274,13 +274,14 @@ class extractor:
 
         max_threads = self.num_threads or min(32, (os.cpu_count() or 1) + 4)
 
-        self._properties = self.covariates.bandNames()
-        self.properties = self._properties.getInfo()
-        self.batchSize = batchSize
-
         # add target band name to properties
-        if self.target.name == 'ee.Image':
-            self.properties = self._properties.add(self.target.bandNames()).getInfo()
+        if self.target.name() == 'Image':
+            self._properties = self.covariates.bandNames().cat(self.target.bandNames())
+        elif self.target.name() == 'FeatureCollection': #if featurecollection, add feature props
+             self._properties = self.covariates.bandNames().cat(self.target.first().propertyNames())
+        self.properties = self._properties.getInfo()
+
+        self.batchSize = batchSize
 
         # Create grid
         grid, items = createGrid(gridSize, ee.Feature(self.aoi), crs = self.crs, list = True)
@@ -367,12 +368,12 @@ class extractor:
                 os.makedirs(self.dd)
         os.chdir(self.dd)
         
-        self._properties = self.covariates.bandNames()
-        self.properties = self._properties.getInfo()
-        
         # add target band name to properties
-        if self.target.name == 'ee.Image':
-            self.properties = self._properties.add(self.target.bandNames()).getInfo()
+        if self.target.name() == 'Image':
+            self._properties = self.covariates.bandNames().cat(self.target.bandNames())
+        else: #if featurecollection, add feature props
+             self._properties = self.covariates.bandNames().cat(self.target.first().propertyNames())
+        self.properties = self._properties.getInfo()
 
         # Create grid
         grid, items = createGrid(gridSize, ee.Feature(self.aoi), crs = self.crs, list = True)
@@ -403,9 +404,6 @@ class extractor:
                             data = self.covariates.reduceRegions(fc, reducer, self.scale)
                         else:
                             data =  self.covariates.sampleRegions(fc, scale = self.scale)
-                        
-                        self._properties = data.first().propertyNames()
-                        self.properties = self._properties.getInfo()
 
                         output = data.map(lambda ft: ft.set('output', self._properties.map(lambda prop: ft.get(prop))))
                         result = output.aggregate_array('output').getInfo()
@@ -593,13 +591,13 @@ class extractor:
         if not os.path.exists(self.dd):
                 os.makedirs(self.dd)
         os.chdir(self.dd)
-        
-        self._properties = self.covariates.bandNames()
-        self.properties = self._properties.getInfo()
-        
+
         # add target band name to properties
-        if self.target is not None and self.target.name == 'ee.Image':
-            self.properties = self._properties.add(self.target.bandNames()).getInfo()
+        if self.target.name() == 'Image':
+            self._properties = self.covariates.bandNames().cat(self.target.bandNames())
+        elif self.target.name() == 'FeatureCollection': #if featurecollection, add feature props
+             self._properties = self.covariates.bandNames().cat(self.target.first().propertyNames())
+        self.properties = self._properties.getInfo()
 
         # Create grid
         grid, items = createGrid(gridSize, ee.Feature(self.aoi), crs = self.crs, list=True)
@@ -631,10 +629,13 @@ class extractor:
                             data =  self.covariates.sampleRegions(fc, scale = self.scale)
 
                         if data.size().getInfo()>0:
-                            self._properties = data.first().propertyNames()
                             output = data.map(lambda ft: ft.set('output', self._properties.map(lambda prop: ft.get(prop))))
                             result = output.aggregate_array('output').getInfo()
-
+                            # output = data.map(lambda ft: ee.Feature(None).copyProperties(ft))
+                            # result = ee.data.computeFeatures({'expression': output, 'fileFormat': 'PANDAS_DATAFRAME'})
+                        
+                            print(f'Out Features: {len(result)}')
+                    
                             file_exists = os.path.isfile(filename)
                             # Write the results to a file.
                             csv_writer_lock = threading.Lock()
