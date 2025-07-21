@@ -28,7 +28,7 @@
 <h3 align="center">GEEML: Google Earth Engine Machine learning</h3>
 
   <p align="center">
-    A python package to extract gee data for machine learning.
+    This package is longer maintained since GEE now natively supports EE data to tabular formats (pandas dataframes and geodataframes) via <a href="https://developers.google.com/earth-engine/tutorials/community/data-converters"><strong>converters</strong></a>. A python package to extract gee data for machine learning.
     <br />
     <a href="https://Geethen.github.io/geeml"><strong>Explore the documentation »</strong></a>
     <br />
